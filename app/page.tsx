@@ -1,65 +1,128 @@
-import Image from "next/image";
+// pages/index.js
+import { useState, useEffect } from 'react';
 
-export default function Home() {
+export default function TicTacToe() {
+  const [board, setBoard] = useState(Array(9).fill(null));
+  const [isPlayerTurn, setIsPlayerTurn] = useState(true);
+  const [status, setStatus] = useState('Твой ход!');
+  const [showPromo, setShowPromo] = useState('');
+  const [gameOver, setGameOver] = useState(false);
+
+  // Проверка победы
+  const checkWinner = (squares) => {
+    const lines = [
+      [0,1,2], [3,4,5], [6,7,8],
+      [0,3,6], [1,4,7], [2,5,8],
+      [0,4,8], [2,4,6]
+    ];
+    for (let [a, b, c] of lines) {
+      if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
+        return squares[a];
+      }
+    }
+    return squares.includes(null) ? null : 'draw';
+  };
+
+  // Простой "ИИ": случайный ход
+  const computerMove = () => {
+    const emptyIndices = board.map((cell, i) => cell === null ? i : null).filter(i => i !== null);
+    if (emptyIndices.length === 0) return;
+
+    const randomIndex = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+    const newBoard = [...board];
+    newBoard[randomIndex] = 'O';
+    setBoard(newBoard);
+    setIsPlayerTurn(true);
+  };
+
+  const handleClick = (index) => {
+    if (board[index] || !isPlayerTurn || gameOver) return;
+    const newBoard = [...board];
+    newBoard[index] = 'X';
+    setBoard(newBoard);
+    setIsPlayerTurn(false);
+  };
+
+  // Отправка в Telegram
+  const sendTelegram = async (text) => {
+    try {
+      await fetch('/.netlify/functions/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+    } catch (e) {
+      console.error('Telegram send failed:', e);
+    }
+  };
+
+  const resetGame = () => {
+    setBoard(Array(9).fill(null));
+    setIsPlayerTurn(true);
+    setStatus('Твой ход!');
+    setShowPromo('');
+    setGameOver(false);
+  };
+
+  // Проверка результата после каждого хода
+  useEffect(() => {
+    const winner = checkWinner(board);
+    if (winner) {
+      setGameOver(true);
+      if (winner === 'X') {
+        const promo = Math.floor(10000 + Math.random() * 90000).toString();
+        setShowPromo(promo);
+        setStatus('Поздравляем! Ты победила! 💖');
+        sendTelegram(`Победа! Промокод выдан: ${promo}`);
+      } else if (winner === 'O') {
+        setStatus('Проигрыш 😢');
+        sendTelegram('Проигрыш');
+      } else {
+        setStatus('Ничья!');
+      }
+    } else if (!isPlayerTurn) {
+      const timer = setTimeout(() => computerMove(), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [board, isPlayerTurn]);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="min-h-screen bg-pink-50 flex flex-col items-center justify-center p-4 font-sans">
+      <h1 className="text-3xl font-bold text-purple-700 mb-4">Крестики-нолики</h1>
+      
+      <div className="grid grid-cols-3 gap-2 mb-6">
+        {board.map((cell, index) => (
+          <button
+            key={index}
+            onClick={() => handleClick(index)}
+            className="w-20 h-20 md:w-24 md:h-24 text-3xl font-bold rounded-xl bg-white shadow-sm border-2 border-pink-200 flex items-center justify-center hover:bg-pink-100 transition-colors disabled:opacity-70"
+            disabled={!!cell || !isPlayerTurn || gameOver}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+            {cell === 'X' ? (
+              <span className="text-pink-600">✗</span>
+            ) : cell === 'O' ? (
+              <span className="text-purple-600">○</span>
+            ) : ''}
+          </button>
+        ))}
+      </div>
+
+      <div className="text-center mb-6">
+        <p className="text-lg text-gray-700 font-medium">{status}</p>
+        {showPromo && (
+          <div className="mt-4 p-4 bg-gradient-to-r from-pink-100 to-purple-100 rounded-xl border border-pink-300 max-w-xs mx-auto">
+            <p className="text-sm text-purple-800 font-medium">Твой промокод:</p>
+            <p className="text-xl font-mono text-pink-700 font-bold">{showPromo}</p>
+          </div>
+        )}
+      </div>
+
+      <button
+        onClick={resetGame}
+        className="px-6 py-2 bg-pink-500 hover:bg-pink-600 text-white font-medium rounded-full shadow-md transition-colors"
+      >
+        {gameOver ? 'Сыграть ещё' : 'Начать заново'}
+      </button>
     </div>
   );
 }
