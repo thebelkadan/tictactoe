@@ -1,19 +1,20 @@
-// pages/index.js
+'use client';
+
 import { useState, useEffect } from 'react';
 
 export default function TicTacToe() {
-  const [board, setBoard] = useState(Array(9).fill(null));
+  const [board, setBoard] = useState<(string | null)[]>(Array(9).fill(null));
   const [isPlayerTurn, setIsPlayerTurn] = useState(true);
   const [status, setStatus] = useState('Твой ход!');
   const [showPromo, setShowPromo] = useState('');
   const [gameOver, setGameOver] = useState(false);
 
-  // Проверка победы
-  const checkWinner = (squares) => {
+  // Проверка победы или ничьей
+  const checkWinner = (squares: (string | null)[]) => {
     const lines = [
-      [0,1,2], [3,4,5], [6,7,8],
-      [0,3,6], [1,4,7], [2,5,8],
-      [0,4,8], [2,4,6]
+      [0, 1, 2], [3, 4, 5], [6, 7, 8], // строки
+      [0, 3, 6], [1, 4, 7], [2, 5, 8], // столбцы
+      [0, 4, 8], [2, 4, 6]             // диагонали
     ];
     for (let [a, b, c] of lines) {
       if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
@@ -25,7 +26,10 @@ export default function TicTacToe() {
 
   // Простой "ИИ": случайный ход
   const computerMove = () => {
-    const emptyIndices = board.map((cell, i) => cell === null ? i : null).filter(i => i !== null);
+    const emptyIndices = board
+      .map((cell, i) => (cell === null ? i : null))
+      .filter((i): i is number => i !== null);
+    
     if (emptyIndices.length === 0) return;
 
     const randomIndex = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
@@ -35,7 +39,8 @@ export default function TicTacToe() {
     setIsPlayerTurn(true);
   };
 
-  const handleClick = (index) => {
+  // Обработка клика игрока
+  const handleClick = (index: number) => {
     if (board[index] || !isPlayerTurn || gameOver) return;
     const newBoard = [...board];
     newBoard[index] = 'X';
@@ -43,19 +48,17 @@ export default function TicTacToe() {
     setIsPlayerTurn(false);
   };
 
-  // Отправка в Telegram
-  const sendTelegram = async (text) => {
-    try {
-      await fetch('/.netlify/functions/notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
-    } catch (e) {
-      console.error('Telegram send failed:', e);
-    }
+  // Отправка уведомления в Telegram
+  const sendTelegram = async (text: string) => {
+   // Внутри sendTelegram
+    await fetch('/.netlify/functions/notify', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ text }),
+});
   };
 
+  // Сброс игры
   const resetGame = () => {
     setBoard(Array(9).fill(null));
     setIsPlayerTurn(true);
@@ -81,6 +84,7 @@ export default function TicTacToe() {
         setStatus('Ничья!');
       }
     } else if (!isPlayerTurn) {
+      // Компьютер ходит с небольшой задержкой
       const timer = setTimeout(() => computerMove(), 600);
       return () => clearTimeout(timer);
     }
@@ -89,7 +93,7 @@ export default function TicTacToe() {
   return (
     <div className="min-h-screen bg-pink-50 flex flex-col items-center justify-center p-4 font-sans">
       <h1 className="text-3xl font-bold text-purple-700 mb-4">Крестики-нолики</h1>
-      
+
       <div className="grid grid-cols-3 gap-2 mb-6">
         {board.map((cell, index) => (
           <button
